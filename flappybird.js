@@ -18,13 +18,20 @@ window.onload = function() {
     var canvas = document.getElementById('gamearea');
     var ctx = canvas.getContext('2d');
     var walls = [];
+    //check and see if a highscore already exists on this browser
+    var highscore;
+    if (localStorage.highscore) {
+        highscore = localStorage.getItem("highscore");
+    } else {
+        highscore = 0;
+    }
     var birdImage = document.getElementById('bird');
     var buildWall = true, birdExists = false, collision = false, timeUpdate = true;
-    var falling = false, pointsPossible = true, askedForName = false;
+    var falling = false, pointsPossible = true, askedForName = false, newHighScore = false;
     var colorIndex = 0, bird_velocity = 0, opacity = 1.0;
     var points = 0, fade_in = 0, time = 0;
     var canvas_height = 500, canvas_width = 800;
-    var loss_screen, gameloop, username;
+    var loss_screen, gameloop;
     const lossRect = new Wall(100, 500 , 600, 300, '#D35400');
     const lossButton = new Wall(300, 300, 200, 75, 'Black');
     const pointsBox = new Wall(595, 0, 205, 40, 'Black');
@@ -33,7 +40,7 @@ window.onload = function() {
     var bird = new Bird(bird_x_start, bird_y_start, bird_size, bird_size);
     gameRunning = setInterval(gameloop, 10);
 
-    //This function runs onces every 10 milliseconds
+    //Main game loop running every 10 ms
     function gameloop() {
         //Update time for game timer
         if (timeUpdate === true) {
@@ -112,6 +119,7 @@ window.onload = function() {
         if (falling && opacity <= 0.0)  {
             ctx.clearRect(0, 0, canvas_width, canvas_height);
             clearInterval(gameRunning);
+            checkScore();
             loss_screen = setInterval(drawLoss, 10);
         }
 
@@ -215,15 +223,13 @@ window.onload = function() {
                 ctx.fillStyle = 'Black';
                 ctx.font = '15px Calibri';
                 ctx.fillText('Created by: Kevin Meyer', canvas.width / 2, 490);
-                clearInterval(loss_screen);
 
-                /**
-                //Prompt user for a name if they want to save a high score
-                if (!askedForName) {
-                    username = prompt("What is your username?");
-                    askedForName = true;
+                ctx.font = "30px Calibri";
+                if (newHighScore === true) {
+                    ctx.fillText("New High Score!", canvas.width / 2, 430);
                 }
-                */
+                ctx.fillText(`Highscore: ${localStorage.highscore}`, canvas.width / 2, 460);
+                clearInterval(loss_screen);
             }
             ctx.fill();
         }
@@ -239,6 +245,14 @@ window.onload = function() {
             colorIndex = 0;
         }
         return color;
+    }
+
+    //Compares points after game is over to saved highscore
+    function checkScore() {
+        if (points > highscore) {
+            localStorage.setItem("highscore", points);
+            newHighScore = true;
+        }
     }
 }
 
