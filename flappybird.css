@@ -2,7 +2,7 @@ body {
     background-color: black;
 }
 
-#flappybirdgamearea {
+#gamearea {
     padding: 0;
     margin: auto;
     display: block;
