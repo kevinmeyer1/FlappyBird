@@ -24,3 +24,5 @@ The goal of this game is to fly for as long as possible. As you play the game, t
 - Fly for as long as possible
 
 ![Flappy Bird Image](https://i.imgur.com/QIwB0mX.png)
+
+![Flappy Bird Image](https://i.imgur.com/xw5tn1c.png)
