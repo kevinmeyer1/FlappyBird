@@ -2,7 +2,7 @@ window.onload = function() {
 
     // ------ Variables To Play With ------ \\
     var bird_size = 50,
-        view_hitbox = false, //Set this to true if you want to see the hitbox of the bird
+        view_hitbox = true, //Set this to true if you want to see the hitbox of the bird
         bird_x_start = 50,
         bird_y_start = 100,
         wall_width = 65,
@@ -17,11 +17,9 @@ window.onload = function() {
     //Boring variables
     var canvas = document.getElementById('gamearea'),
         ctx = canvas.getContext('2d'),
-        birdImage = document.getElementById('bird'),
-        background = document.getElementById('background');
-        bird = new Bird(bird_x_start, bird_y_start, bird_size, bird_size),
+        background = document.getElementById('background'),
         walls = [];
-    //Check for highscores on this browser
+    //Check for highscores on the browser
     var highscore;
     if (localStorage.highscore) {
         highscore = localStorage.getItem("highscore");
@@ -51,6 +49,26 @@ window.onload = function() {
     const middleRect = new Wall(100, 500 , 600, 300, '#D35400'),
           lossButton = new Wall(300, 300, 200, 75, 'Black'),
           pointsBox = new Wall(595, 0, 205, 40, 'Black');
+    //The array of 12 rectangles that make up my bird
+    var birdImages = [
+        new BirdRect(0, 16, 4, 16, document.getElementById("0")),
+        new BirdRect(4, 12, 12, 20, document.getElementById("1")),
+        new BirdRect(8, 8, 4, 4, document.getElementById("2")),
+        new BirdRect(12, 4, 36, 36, document.getElementById("3")),
+        new BirdRect(20, 0, 24, 4, document.getElementById("4")),
+        new BirdRect(16, 40, 44, 4, document.getElementById("5")),
+        new BirdRect(24, 44, 20, 4, document.getElementById("6")),
+        new BirdRect(48, 8, 4, 16, document.getElementById("7")),
+        new BirdRect(52, 12, 4, 12, document.getElementById("8")),
+        new BirdRect(48, 24, 12, 16, document.getElementById("9")),
+        new BirdRect(60, 28, 4, 4, document.getElementById("10")),
+        new BirdRect(4, 32, 8, 4, document.getElementById("11"))
+    ];
+    //I set up the bird at 0, 0 so I need to adjust my values for starting position
+    for (var i = 0; i < 12; i++) {
+        birdImages[i].x += bird_x_start;
+        birdImages[i].y += bird_y_start;
+    }
 
     //--------------------------------------Begining of Game Logic--------------------------------------\\
 
@@ -61,7 +79,7 @@ window.onload = function() {
     function startLoop() {
         //Listen for spacebar to start game
         document.body.onkeyup = function(e) {
-            if (e.which === 32 && !falling) {
+            if (e.which === 32) {
                 clearInterval(start_screen);
                 game_screen = setInterval(gameLoop, 10);
             }
@@ -97,24 +115,31 @@ window.onload = function() {
             buildWall = false;
         }
 
-        //Check for collision with walls
-        for (var i = 0; i < walls.length; i++) {
-            var wall = walls[i];
-            if (wall.x < wall.x + wall.width &&
-                bird.x + bird.width > wall.x &&
-                bird.y < wall.y + wall.height &&
-                bird.y + bird.height > wall.y) {
+        // I have to check collision for every rectangle of the bird
+        for (var i = 0; i < 12; i++) {
+            var bird = birdImages[i],
+                topWall = walls[0],
+                bottomWall = walls[1];
+
+            if ((bird.x < bottomWall.x + bottomWall.width &&
+                bird.x + bird.width > bottomWall.x &&
+                bird.y < bottomWall.y + bottomWall.height &&
+                bird.y + bird.height > bottomWall.y) ||
+               (bird.x < topWall.x + topWall.width &&
+                bird.x + bird.width > topWall.x &&
+                bird.y < topWall.y + topWall.height &&
+                bird.y + bird.height > topWall.y)) {
                     collision = true;
-                }
+            }
         }
 
-        //Check for collision with ceiling/floor
-        if (bird.y + bird.height >= canvas.height || bird.y <= 0) {
+        //Check for collision with ceiling/floor. 6 and 4 are my top and bottom rectangles of the bird
+        if (birdImages[4].y < 0 || birdImages[6].y + 4 >= canvas.height) {
             collision = true;
         }
 
-        //Check points algorithm
-        if (bird.x >= walls[0].x + wall_width) {
+        //Check points algorithm. birdImages[0] is teh left most rectangle of the bird
+        if (birdImages[0].x >= walls[0].x + wall_width) {
             if (pointsPossible === true) {
                 points += 1;
             }
@@ -161,7 +186,10 @@ window.onload = function() {
             birdVelocity += gravity_acceleration;
         }
         wallSpeed += wallspeed_acceleration;
-        bird.y += birdVelocity;
+        for (var i = 0; i < 12; i++) {
+            var bird = birdImages[i];
+            bird.y += birdVelocity;
+        }
     }
 
     //Draws rectangles and text for start screen
@@ -202,7 +230,7 @@ window.onload = function() {
         }
 
         //Rotates bird based on its velocity (turn up if going up, turn down if going down)
-        var angle = 0;
+        /*var angle = 0;
         if (birdVelocity >= 3.5) {
             angle = Math.PI / 3;
             ctx.translate(bird.x + 30, bird.y - 5);
@@ -219,8 +247,14 @@ window.onload = function() {
             angle = Math.PI / -6;
             ctx.translate(bird.x - 15, bird.y + 20);
         }
-        ctx.rotate(angle);
-        ctx.drawImage(birdImage, 0, 0, bird_size, bird_size);
+        ctx.rotate(angle);*/
+
+        for (var i = 0; i < 12; i++) {
+            var bird = birdImages[i];
+            ctx.strokeStyle = "red";
+            ctx.strokeRect(bird.x, bird.y, bird.width, bird.height);
+            ctx.drawImage(bird.image, bird.x, bird.y, bird.width, bird.height);
+        }
 
         //Resets canvas location from translates/rotation and draws rects/text for points/time
         ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -233,9 +267,6 @@ window.onload = function() {
         ctx.fillText(`Points: ${points}`, 710, 25);
         ctx.fillText(`Time: ${time / 100}`, 610, 25);
         ctx.restore();
-        if (view_hitbox === true) {
-            ctx.strokeRect(bird.x, bird.y, bird_size, bird_size);
-        }
         ctx.closePath();
     }
 
@@ -357,12 +388,13 @@ class Wall {
 }
 
 //This is the class for the Bird
-class Bird {
-    constructor(x, y, width, height) {
+class BirdRect {
+    constructor(x, y, width, height, image) {
         this.x = x;
         this.y = y;
         this.width = width;
         this.height = height;
+        this.image = image;
     }
 
     get x() {
@@ -381,6 +413,10 @@ class Bird {
         return this._width;
     }
 
+    get image() {
+        return this._image;
+    }
+
     set x(x) {
         this._x = x;
     }
@@ -395,5 +431,9 @@ class Bird {
 
     set height(height) {
         this._height = height;
+    }
+
+    set image(image) {
+        this._image = image;
     }
 }
