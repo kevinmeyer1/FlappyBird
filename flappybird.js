@@ -1,47 +1,77 @@
 window.onload = function() {
+
     // ------ Variables To Play With ------ \\
-    var bird_size = 50;
-    var view_hitbox = false; //Set this to true if you want to see actual hitbox of the bird
-    var bird_x_start = 50;
-    var bird_y_start = 100;
-    var wall_width = 65;
-    var new_wall_point = 500;
-    var wallSpeed = 1.5;
-    var wallspeed_acceleration = 0.001;
-    var gravity_acceleration = 0.1;
-    var opacity_acceleration = 0.025;
-    var jump_velocity = -3.5;
-    var max_velocity = 5;
-    var colors = ['#87000E', '#159B00', '#717D7E', '#1F618D', '#D35400', '#8E44AD', '#E000F3', '#1ABC9C'];
+    var bird_size = 50,
+        view_hitbox = false, //Set this to true if you want to see the hitbox of the bird
+        bird_x_start = 50,
+        bird_y_start = 100,
+        wall_width = 65,
+        new_wall_point = 500,
+        wallspeed_acceleration = 0.001,
+        gravity_acceleration = 0.1,
+        opacity_acceleration = 0.025,
+        jump_velocity = -3.5,
+        max_velocity = 5,
+        colors = ['#87000E', '#159B00', '#717D7E', '#1F618D', '#D35400', '#8E44AD', '#E000F3', '#1ABC9C'];
 
     //Boring variables
-    var canvas = document.getElementById('gamearea');
-    var ctx = canvas.getContext('2d');
-    var walls = [];
-    //check and see if a highscore already exists on this browser
+    var canvas = document.getElementById('gamearea'),
+        ctx = canvas.getContext('2d'),
+        birdImage = document.getElementById('bird'),
+        background = document.getElementById('background');
+        bird = new Bird(bird_x_start, bird_y_start, bird_size, bird_size),
+        walls = [];
+    //Check for highscores on this browser
     var highscore;
     if (localStorage.highscore) {
         highscore = localStorage.getItem("highscore");
     } else {
         highscore = 0;
     }
-    var birdImage = document.getElementById('bird');
-    var buildWall = true, birdExists = false, collision = false, timeUpdate = true;
-    var falling = false, pointsPossible = true, askedForName = false, newHighScore = false;
-    var colorIndex = 0, bird_velocity = 0, opacity = 1.0;
-    var points = 0, fade_in = 0, time = 0;
-    var canvas_height = 500, canvas_width = 800;
-    var loss_screen, gameloop;
-    const lossRect = new Wall(100, 500 , 600, 300, '#D35400');
-    const lossButton = new Wall(300, 300, 200, 75, 'Black');
-    const pointsBox = new Wall(595, 0, 205, 40, 'Black');
+    //Boolean variables
+    var buildWall = true,
+        collision = false,
+        timeUpdate = true,
+        falling = false,
+        pointsPossible = true,
+        newHighScore = false;
+    //Constantly changing values
+    var wallSpeed = 1.5,
+        colorIndex = 0,
+        birdVelocity = 0,
+        opacity = 1.0,
+        points = 0,
+        fadeIn = 0,
+        time = 0;
+    //Interval placeholders
+    var start_screen,
+        game_screen,
+        loss_screen;
+    //Objects - Some rectangles for start and loss screens
+    const middleRect = new Wall(100, 500 , 600, 300, '#D35400'),
+          lossButton = new Wall(300, 300, 200, 75, 'Black'),
+          pointsBox = new Wall(595, 0, 205, 40, 'Black');
 
-    //Create bird and start game loop
-    var bird = new Bird(bird_x_start, bird_y_start, bird_size, bird_size);
-    gameRunning = setInterval(gameloop, 10);
+    //--------------------------------------Begining of Game Logic--------------------------------------\\
 
-    //Main game loop running every 10 ms
-    function gameloop() {
+    //Run Start screen
+    start_screen = setInterval(startLoop, 10);
+
+    //This function draws the start screen and waits for the user to start the game
+    function startLoop() {
+        //Listen for spacebar to start game
+        document.body.onkeyup = function(e) {
+            if (e.which === 32 && !falling) {
+                clearInterval(start_screen);
+                game_screen = setInterval(gameLoop, 10);
+            }
+        }
+
+        drawStart();
+    }
+
+    //This function does all of the calcutaions for the bird/walls and calls the drawGame function
+    function gameLoop() {
         //Update time for game timer
         if (timeUpdate === true) {
             time += 1;
@@ -50,17 +80,17 @@ window.onload = function() {
         //Listen for jump command
         document.body.onkeyup = function(e) {
             if (e.which === 32 && !falling) {
-                bird_velocity = jump_velocity;
+                birdVelocity = jump_velocity;
             }
         }
 
         //Construct a bottom/top pair of walls, add them to wall array
         if (buildWall) {
-            var bottomHeight = Math.round(Math.random() * (300 - 150) + 100);
-            var bottomOffsetHeight = 500 - bottomHeight;
-            var topHeight = 500 - (bottomHeight + 150);
-            const bottomWall = new Wall(790, bottomOffsetHeight, wall_width, bottomHeight, getColor());
-            const topWall = new Wall(790, 0, wall_width, topHeight, bottomWall.color);
+            var bottomHeight = Math.round(Math.random() * (300 - 150) + 100),
+                bottomOffsetHeight = 500 - bottomHeight,
+                topHeight = 500 - (bottomHeight + 150);
+            const bottomWall = new Wall(790, bottomOffsetHeight, wall_width, bottomHeight, getColor()),
+                  topWall = new Wall(790, 0, wall_width, topHeight, bottomWall.color);
 
             walls.push(topWall);
             walls.push(bottomWall);
@@ -79,7 +109,7 @@ window.onload = function() {
         }
 
         //Check for collision with ceiling/floor
-        if (bird.y >= 425 || bird.y <= 0) {
+        if (bird.y + bird.height >= canvas.height || bird.y <= 0) {
             collision = true;
         }
 
@@ -117,8 +147,8 @@ window.onload = function() {
 
         //If opacity is 0, the bird is off the screen so its ok to switch over to my loss loop
         if (falling && opacity <= 0.0)  {
-            ctx.clearRect(0, 0, canvas_width, canvas_height);
-            clearInterval(gameRunning);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            clearInterval(game_screen);
             checkScore();
             loss_screen = setInterval(drawLoss, 10);
         }
@@ -126,18 +156,40 @@ window.onload = function() {
         //Call the function to draw everything happening in the game loop
         drawGame();
 
-        //update values for gravity, wallspeed, and bird y coordinate
-        if (bird_velocity + gravity_acceleration < max_velocity) {
-            bird_velocity += gravity_acceleration;
+        //Updates values for gravity, wallspeed, and bird y coordinate
+        if (birdVelocity + gravity_acceleration < max_velocity) {
+            birdVelocity += gravity_acceleration;
         }
         wallSpeed += wallspeed_acceleration;
-        bird.y += bird_velocity;
+        bird.y += birdVelocity;
     }
 
-    //Draws walls, bird, time, and points every run through
+    //Draws rectangles and text for start screen
+    function drawStart() {
+        ctx.beginPath();
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = middleRect.color;
+        ctx.fillRect(100, 100, 600, 300);
+        ctx.textAlign = 'center';
+        ctx.font = '60px Magneto';
+        ctx.fillStyle = '#1ABC9C';
+        ctx.fillText("Flying Bird", canvas.width / 2, 70);
+        ctx.font = "40px Calibri";
+        ctx.fillText("Press SPACEBAR to Start!", canvas.width / 2, 450);
+        ctx.fillStyle = "black";
+        ctx.fillText("Welcome!", canvas.width / 2, 150);
+        ctx.fillText("The goal of this game is to", canvas.width / 2, 210);
+        ctx.fillText("fly for as long as possible", canvas.width / 2, 250);
+        ctx.fillText("Controls:", canvas.width / 2, 310);
+        ctx.fillText("Press SPACEBAR to jump", canvas.width / 2, 360);
+        ctx.closePath();
+    }
+
+    //Draws walls, bird, time, and points
     function drawGame() {
         ctx.beginPath();
-        ctx.clearRect(0, 0, canvas_width, canvas_height);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.textAlign = "start";
         ctx.globalAlpha = opacity;
         ctx.save();
 
@@ -151,19 +203,19 @@ window.onload = function() {
 
         //Rotates bird based on its velocity (turn up if going up, turn down if going down)
         var angle = 0;
-        if (bird_velocity >= 3.5) {
+        if (birdVelocity >= 3.5) {
             angle = Math.PI / 3;
-            ctx.translate(bird.x + 25, bird.y);
-        } else if (bird_velocity > 2 && bird_velocity < 3.5) {
+            ctx.translate(bird.x + 30, bird.y - 5);
+        } else if (birdVelocity > 2 && birdVelocity < 3.5) {
             angle = Math.PI / 6;
-            ctx.translate(bird.x + 20, bird.y);
-        } else if (bird_velocity <= 2 && bird_velocity >= -1.5) {
-            //No angle rotation, moving forward
+            ctx.translate(bird.x + 20, bird.y - 5);
+        } else if (birdVelocity <= 2 && birdVelocity >= -1.5) {
+            //No angle rotation, looking forward 0 degrees
             ctx.translate(bird.x, bird.y);
-        } else if (bird_velocity > -1.5 && bird_velocity <= 0) {
+        } else if (birdVelocity > -1.5 && birdVelocity <= 0) {
             angle = Math.PI / -3;
             ctx.translate(bird.x - 50, bird.y);
-        } else if (bird_velocity >= -3.5 && bird_velocity <= -1.5) {
+        } else if (birdVelocity >= -3.5 && birdVelocity <= -1.5) {
             angle = Math.PI / -6;
             ctx.translate(bird.x - 15, bird.y + 20);
         }
@@ -180,7 +232,6 @@ window.onload = function() {
         ctx.font = "20px Calibri";
         ctx.fillText(`Points: ${points}`, 710, 25);
         ctx.fillText(`Time: ${time / 100}`, 610, 25);
-        ctx.fill();
         ctx.restore();
         if (view_hitbox === true) {
             ctx.strokeRect(bird.x, bird.y, bird_size, bird_size);
@@ -191,19 +242,18 @@ window.onload = function() {
     //Draws text and shapes on loss screen
     function drawLoss() {
         ctx.beginPath();
-        ctx.clearRect(0, 0, canvas_width, canvas_height);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.globalAlpha = 1;
-        ctx.fillStyle = lossRect.color;
-        ctx.fillRect(lossRect.x, lossRect.y, lossRect.width, lossRect.height, lossRect.color);
-        if (lossRect.y > 100) {
-            lossRect.y -= 5;
+        ctx.textAlign = 'center';
+        ctx.font = '60px Magneto';
+        ctx.fillStyle = '#1ABC9C';
+        ctx.fillText("Flying Bird", canvas.width / 2, 70);
+        ctx.fillStyle = middleRect.color;
+        ctx.fillRect(middleRect.x, middleRect.y, middleRect.width, middleRect.height);
+        if (middleRect.y > 100) {
+            middleRect.y -= 5;
         } else {
-            ctx.globalAlpha = 1;
-            ctx.textAlign = 'center';
-            ctx.font = '60px Magneto';
-            ctx.fillStyle = '#1ABC9C';
-            ctx.fillText("Flying Bird", canvas.width / 2, 70);
-            ctx.globalAlpha = fade_in;
+            ctx.globalAlpha = fadeIn;
             ctx.fillStyle = "Black";
             ctx.font = '60px Calibri'
             ctx.fillText("Good Try!", canvas.width / 2, 175);
@@ -211,12 +261,11 @@ window.onload = function() {
             ctx.fillText(`Points: ${points}`, canvas.width / 2, 235);
             ctx.fillText(`Time: ${time / 100} seconds`, canvas.width / 2, 270);
 
-            if (fade_in < 1) {
-                fade_in += opacity_acceleration;
-            }
-
-            if (fade_in >= 1) {
-                ctx.fillRect(lossButton.x, lossButton.y, lossButton.width, lossButton.height, lossButton.color);
+            if (fadeIn < 1) {
+                fadeIn += opacity_acceleration;
+            } else {
+                ctx.fillStyle = lossButton.color;
+                ctx.fillRect(lossButton.x, lossButton.y, lossButton.width, lossButton.height);
                 ctx.font = '20px Calibri';
                 ctx.fillStyle = "White";
                 ctx.fillText("Press F5 to Restart", canvas.width / 2, 345);
@@ -315,6 +364,7 @@ class Bird {
         this.width = width;
         this.height = height;
     }
+
     get x() {
         return this._x;
     }
