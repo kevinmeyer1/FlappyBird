@@ -2,17 +2,19 @@ window.onload = function() {
 
     // ------ Variables To Play With ------ \\
     var bird_size = 50,
-        view_hitbox = true, //Set this to true if you want to see the hitbox of the bird
         bird_x_start = 50,
         bird_y_start = 100,
         wall_width = 65,
-        new_wall_point = 500,
+        wall_start = 500,
+        new_wall_point_acceleration = 0.02,
         wallspeed_acceleration = 0.001,
         gravity_acceleration = 0.1,
         opacity_acceleration = 0.025,
         jump_velocity = -3.5,
         max_velocity = 5,
-        colors = ['#87000E', '#159B00', '#717D7E', '#1F618D', '#D35400', '#8E44AD', '#E000F3', '#1ABC9C'];
+        wall_change_distance = 50,
+        colors = ['#87000E', '#159B00', '#717D7E', '#1F618D', '#D35400', '#8E44AD', '#E000F3', '#1ABC9C'],
+        developer_view = false; //Set to true to see hitboxes, new_wall_point, wall_start
 
     //Boring variables
     var canvas = document.getElementById('gamearea'),
@@ -35,6 +37,7 @@ window.onload = function() {
         newHighScore = false;
     //Constantly changing values
     var wallSpeed = 1.5,
+        new_wall_point = wall_start,
         colorIndex = 0,
         birdVelocity = 0,
         opacity = 1.0,
@@ -104,9 +107,28 @@ window.onload = function() {
 
         //Construct a bottom/top pair of walls, add them to wall array
         if (buildWall) {
-            var bottomHeight = Math.round(Math.random() * (300 - 150) + 100),
-                bottomOffsetHeight = 500 - bottomHeight,
+            var bottomHeight,
+                bottomOffsetHeight,
+                topHeight;
+
+            //This make is to that the wall gaps arent impossibly far apart
+            if (walls.length == 0) {
+                bottomHeight = Math.round(Math.random() * (300 - 150) + 100);
+                bottomOffsetHeight = 500 - bottomHeight;
                 topHeight = 500 - (bottomHeight + 150);
+            } else {
+                var previousHeight = walls[walls.length - 1].height;
+                bottomHeight = Math.round(Math.random() * ((previousHeight + wall_change_distance) -
+                    (previousHeight - wall_change_distance)) + (previousHeight - wall_change_distance));
+                if (bottomHeight < 100) {
+                    bottomHeight = 100;
+                } else if (bottomHeight > 300) {
+                    bottomHeight = 300;
+                }
+                bottomOffsetHeight = 500 - bottomHeight;
+                topHeight = 500 - (bottomHeight + 150);
+            }
+
             const bottomWall = new Wall(790, bottomOffsetHeight, wall_width, bottomHeight, getColor()),
                   topWall = new Wall(790, 0, wall_width, topHeight, bottomWall.color);
 
@@ -138,7 +160,7 @@ window.onload = function() {
             collision = true;
         }
 
-        //Check points algorithm. birdImages[0] is teh left most rectangle of the bird
+        //Check points algorithm. birdImages[0] is the left most rectangle of the bird
         if (birdImages[0].x >= walls[0].x + wall_width) {
             if (pointsPossible === true) {
                 points += 1;
@@ -180,8 +202,11 @@ window.onload = function() {
 
         //Call the function to draw everything happening in the game loop
         drawGame();
+        if (developer_view) {
+            drawDeveloper();
+        }
 
-        //Updates values for gravity, wallspeed, and bird y coordinate
+        //Updates my constantly changing values
         if (birdVelocity + gravity_acceleration < max_velocity) {
             birdVelocity += gravity_acceleration;
         }
@@ -190,6 +215,7 @@ window.onload = function() {
             var bird = birdImages[i];
             bird.y += birdVelocity;
         }
+        new_wall_point -= new_wall_point_acceleration;
     }
 
     //Draws rectangles and text for start screen
@@ -219,45 +245,23 @@ window.onload = function() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.textAlign = "start";
         ctx.globalAlpha = opacity;
-        ctx.save();
 
         //Moves the walls over by wallSpeed each iteration - this speeds up with wallspeed_acceleration
         for (var i = 0; i < walls.length; i++) {
+            ctx.strokeStyle = "black";
             ctx.fillStyle = walls[i].color;
             ctx.fillRect(walls[i].x, walls[i].y, walls[i].width, walls[i].height);
             ctx.strokeRect(walls[i].x, walls[i].y, walls[i].width, walls[i].height);
             walls[i].x -= wallSpeed;
         }
 
-        //Rotates bird based on its velocity (turn up if going up, turn down if going down)
-        /*var angle = 0;
-        if (birdVelocity >= 3.5) {
-            angle = Math.PI / 3;
-            ctx.translate(bird.x + 30, bird.y - 5);
-        } else if (birdVelocity > 2 && birdVelocity < 3.5) {
-            angle = Math.PI / 6;
-            ctx.translate(bird.x + 20, bird.y - 5);
-        } else if (birdVelocity <= 2 && birdVelocity >= -1.5) {
-            //No angle rotation, looking forward 0 degrees
-            ctx.translate(bird.x, bird.y);
-        } else if (birdVelocity > -1.5 && birdVelocity <= 0) {
-            angle = Math.PI / -3;
-            ctx.translate(bird.x - 50, bird.y);
-        } else if (birdVelocity >= -3.5 && birdVelocity <= -1.5) {
-            angle = Math.PI / -6;
-            ctx.translate(bird.x - 15, bird.y + 20);
-        }
-        ctx.rotate(angle);*/
-
+        //Draws each of the 12 images of the bird
         for (var i = 0; i < 12; i++) {
             var bird = birdImages[i];
-            ctx.strokeStyle = "red";
-            ctx.strokeRect(bird.x, bird.y, bird.width, bird.height);
             ctx.drawImage(bird.image, bird.x, bird.y, bird.width, bird.height);
         }
 
-        //Resets canvas location from translates/rotation and draws rects/text for points/time
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        //Points and time
         ctx.fillStyle = pointsBox.color;
         ctx.fillRect(pointsBox.x, pointsBox.y, pointsBox.width, pointsBox.height);
         ctx.fillStyle = "White";
@@ -266,7 +270,6 @@ window.onload = function() {
         ctx.font = "20px Calibri";
         ctx.fillText(`Points: ${points}`, 710, 25);
         ctx.fillText(`Time: ${time / 100}`, 610, 25);
-        ctx.restore();
         ctx.closePath();
     }
 
@@ -310,13 +313,35 @@ window.onload = function() {
                 }
                 ctx.fillText(`Highscore: ${localStorage.highscore}`, canvas.width / 2, 460);
                 clearInterval(loss_screen);
+
+                //After this else runs, the game stops looping and all activity is stopped
             }
             ctx.fill();
         }
         ctx.closePath();
     }
 
-    //Function returns a color, come out in sequential order
+    //Draws hitboxes, wall_start line, new_wall_point line
+    function drawDeveloper() {
+        ctx.beginPath();
+        ctx.strokeStyle = 'red';
+        for (var i = 0; i < 12; i++) {
+            var bird = birdImages[i];
+            ctx.strokeRect(bird.x, bird.y, bird.width, bird.height);
+        }
+        ctx.lineWidth = 2;
+        ctx.moveTo(new_wall_point, 500);
+        ctx.lineTo(new_wall_point, 0);
+        ctx.stroke();
+        ctx.strokeStyle = "green";
+        ctx.moveTo(wall_start, 500);
+        ctx.lineTo(wall_start, 0);
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.closePath();
+    }
+
+    //Function returns a color, come out in sequential order of colors
     function getColor() {
         var color = colors[colorIndex];
         colorIndex++;
